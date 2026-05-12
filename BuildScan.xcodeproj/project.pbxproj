@@ -271,7 +271,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BuildScan/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Build Scan";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This application need permission for use this feature.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Please allow the scanning app to access your camera! All data is secure and will not be shared with anyone. Your photos are stored locally in the app's cache and are not shared with anyone!";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -312,7 +312,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BuildScan/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Build Scan";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This application need permission for use this feature.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Please allow the scanning app to access your camera! All data is secure and will not be shared with anyone. Your photos are stored locally in the app's cache and are not shared with anyone!";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
