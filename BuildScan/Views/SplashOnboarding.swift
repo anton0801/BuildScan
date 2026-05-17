@@ -1,118 +1,426 @@
 import SwiftUI
+import Combine
+import Network
 
-// MARK: - Splash Screen
 struct SplashView: View {
-    @State private var scale: CGFloat = 0.3
-    @State private var opacity: Double = 0
-    @State private var glowRadius: CGFloat = 0
-    @State private var particleOpacity: Double = 0
-    @State private var textOffset: CGFloat = 30
-    @State private var textOpacity: Double = 0
-    @State private var scanLineOffset: CGFloat = -100
+    @State private var logoScale: CGFloat = 0.7
+    @State private var logoOpacity: Double = 0
+    @State private var brandOffset: CGFloat = 12
+    @State private var brandOpacity: Double = 0
+    @State private var statsOpacity: Double = 0
+    @State private var cancellables = Set<AnyCancellable>()
+    @State private var statsOffset: CGFloat = 16
+    @State private var loadingOpacity: Double = 0
+    @State private var loadProgress: CGFloat = 0
+    @State private var networkMonitor = NWPathMonitor()
+    @State private var cornersOpacity: Double = 0
+    @State private var scanLineY: CGFloat = -44
     @State private var scanLineOpacity: Double = 0
-    var onComplete: () -> Void
-
+    @StateObject private var viewModel = BuildScanViewModel()
+    @State private var hazardOpacity: Double = 0
+    @State private var displayPct: Int = 0
+    
     var body: some View {
-        ZStack {
-            DS.Colors.bgPrimary.ignoresSafeArea()
-
-            // Background grid
-            GridBackgroundView()
-                .opacity(0.3)
-
-            // Particles
-            ForEach(0..<12, id: \.self) { i in
-                ParticleDot(index: i)
-                    .opacity(particleOpacity)
-            }
-
-            VStack(spacing: DS.Spacing.xl) {
-                // Logo
-                ZStack {
-                    // Glow
-                    Circle()
-                        .fill(DS.Colors.cyanGlow)
-                        .frame(width: 120, height: 120)
-                        .blur(radius: glowRadius)
-
-                    // Icon bg
+        NavigationView {
+            ZStack {
+                // Steel background
+                Color(hex: "#0A0A0A").ignoresSafeArea()
+                
+                GeometryReader { geo in
+                    Image("scanningsinfo")
+                        .resizable().scaledToFill()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .ignoresSafeArea()
+                        .blur(radius: 14)
+                        .opacity(0.2)
+                }
+                .ignoresSafeArea()
+                
+                SteelTextureView().ignoresSafeArea()
+                
+                // Hazard stripe — top
+                VStack {
+                    HazardBarView(horizontal: true)
+                        .frame(height: 8)
+                        .opacity(hazardOpacity)
+                    Spacer()
+                }.ignoresSafeArea()
+                
+                // Hazard stripe — bottom
+                VStack {
+                    Spacer()
+                    HazardBarView(horizontal: false)
+                        .frame(height: 60)
+                        .opacity(hazardOpacity)
+                }.ignoresSafeArea()
+                
+                NavigationLink(
+                    destination: BuildScanWebView().navigationBarHidden(true),
+                    isActive: $viewModel.navigateToWeb
+                ) { EmptyView() }
+                
+                NavigationLink(
+                    destination: RootView().navigationBarBackButtonHidden(true),
+                    isActive: $viewModel.navigateToMain
+                ) { EmptyView() }
+                
+                // Industrial corner brackets
+                CornersView().opacity(cornersOpacity)
+                
+                VStack(spacing: 0) {
+                    Spacer()
+                    
+                    // Hex logo
                     ZStack {
-                        RoundedRectangle(cornerRadius: 28)
+                        HexagonShape()
+                            .fill(Color(hex: "#F5A623"))
+                            .frame(width: 100, height: 100)
+                        
+                        HexagonShape()
+                            .fill(Color(hex: "#1A1208"))
+                            .frame(width: 92, height: 92)
+                        
+                        Image(systemName: "cube")
+                            .font(.system(size: 40))
+                            .foregroundColor(Color(hex: "#F5A623"))
+                        
+                        // Scan line
+                        Rectangle()
                             .fill(
                                 LinearGradient(
-                                    colors: [DS.Colors.card, DS.Colors.bgSecondary],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+                                    colors: [.clear, Color(hex: "#F5A623").opacity(0.8), .clear],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
                                 )
                             )
-                            .frame(width: 100, height: 100)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 28)
-                                    .stroke(DS.Colors.cyan.opacity(0.6), lineWidth: 1.5)
-                            )
-
-                        // Crack icon
-                        CrackIconView()
-                            .frame(width: 60, height: 60)
+                            .frame(width: 92, height: 2)
+                            .offset(y: scanLineY)
+                            .opacity(scanLineOpacity)
+                            .clipShape(HexagonShape())
                     }
-
-                    // Scan line
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.clear, DS.Colors.cyan, .clear],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: 80, height: 2)
-                        .offset(y: scanLineOffset)
-                        .opacity(scanLineOpacity)
-                        .clipShape(RoundedRectangle(cornerRadius: 28))
+                    .scaleEffect(logoScale)
+                    .opacity(logoOpacity)
+                    
+                    // Brand
+                    VStack(spacing: 4) {
+                        HStack(spacing: 0) {
+                            Text("BUILD")
+                                .font(.system(size: 52, weight: .heavy, design: .rounded))
+                                .foregroundColor(.white)
+                                .kerning(6)
+                            Text("SCAN")
+                                .font(.system(size: 52, weight: .black, design: .rounded))
+                                .foregroundColor(Color(hex: "#F5A623"))
+                                .kerning(6)
+                        }
+                        
+                        Text("CONSTRUCTION MANAGEMENT")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color(hex: "#888888"))
+                            .kerning(4)
+                    }
+                    .offset(y: brandOffset)
+                    .opacity(brandOpacity)
+                    .padding(.top, 10)
+                    
+                    // Divider
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(LinearGradient(
+                                colors: [.clear, Color(hex: "#F5A623").opacity(0.4), .clear],
+                                startPoint: .leading, endPoint: .trailing
+                            ))
+                            .frame(height: 1)
+                        Rectangle()
+                            .fill(Color(hex: "#F5A623"))
+                            .frame(width: 6, height: 6)
+                            .rotationEffect(.degrees(45))
+                        Rectangle()
+                            .fill(LinearGradient(
+                                colors: [.clear, Color(hex: "#F5A623").opacity(0.4), .clear],
+                                startPoint: .leading, endPoint: .trailing
+                            ))
+                            .frame(height: 1)
+                    }
+                    .padding(.horizontal, 40)
+                    .padding(.top, 20)
+                    .opacity(statsOpacity)
+                    
+                    // Loading bar
+                    VStack(spacing: 6) {
+                        HStack {
+                            Text("INITIALIZING")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(Color(hex: "#555555"))
+                                .kerning(3)
+                            Spacer()
+                            Text("\(displayPct)%")
+                                .font(.custom("BebasNeue-Regular", size: 14))
+                                .foregroundColor(Color(hex: "#F5A623"))
+                                .kerning(1)
+                        }
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white.opacity(0.06))
+                                    .frame(height: 3)
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color(hex: "#C47A0A"), Color(hex: "#F5A623"), Color(hex: "#FFD180")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .frame(width: geo.size.width * loadProgress, height: 3)
+                            }
+                        }
+                        .frame(height: 3)
+                    }
+                    .padding(.horizontal, 80)
+                    .padding(.top, 16)
+                    .opacity(loadingOpacity)
+                    
+                    Spacer()
                 }
-                .scaleEffect(scale)
-                .opacity(opacity)
-
-                VStack(spacing: 8) {
-                    Text("Build Scan")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                        .foregroundColor(DS.Colors.textPrimary)
-
-                    Text("Scan your walls")
-                        .font(DS.Typography.subheading())
-                        .foregroundColor(DS.Colors.cyan)
-                        .tracking(3)
-                        .textCase(.uppercase)
-                }
-                .offset(y: textOffset)
-                .opacity(textOpacity)
+            }
+            .fullScreenCover(isPresented: $viewModel.showPermissionPrompt) {
+                BuildScanConsentView(viewModel: viewModel)
+            }
+            .fullScreenCover(isPresented: $viewModel.showOfflineView) {
+                OfflineView()
+            }
+            .onAppear {
+                setupStreams()
+                runAnimation()
+                setupNetworkMonitoring()
+                viewModel.boot()
             }
         }
-        .onAppear { runAnimation() }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
-
+    
     private func runAnimation() {
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2)) {
-            scale = 1.0
-            opacity = 1.0
+        // Hazard bars
+        withAnimation(.easeOut(duration: 0.4).delay(0.3)) {
+            hazardOpacity = 1
         }
-        withAnimation(.easeOut(duration: 0.8).delay(0.4)) {
-            glowRadius = 30
-            particleOpacity = 0.8
+        // Logo pop
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.65).delay(0.4)) {
+            logoScale = 1.0
+            logoOpacity = 1.0
         }
-        withAnimation(.easeOut(duration: 0.4).delay(0.6)) {
-            textOffset = 0
-            textOpacity = 1.0
-        }
-        withAnimation(.easeInOut(duration: 0.8).delay(0.8)) {
-            scanLineOffset = 100
+        // Scan line
+        withAnimation(.easeInOut(duration: 0.8).delay(1.0)) {
+            scanLineY = 44
             scanLineOpacity = 0.9
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
-            onComplete()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            scanLineOpacity = 0
+        }
+        // Brand text
+        withAnimation(.easeOut(duration: 0.4).delay(0.85)) {
+            brandOffset = 0
+            brandOpacity = 1
+        }
+        // Corners
+        withAnimation(.easeOut(duration: 0.5).delay(0.9)) {
+            cornersOpacity = 1
+        }
+        // Stats
+        withAnimation(.easeOut(duration: 0.5).delay(1.2)) {
+            statsOpacity = 1
+            statsOffset = 0
+        }
+        // Loading bar
+        withAnimation(.easeOut(duration: 0.3).delay(1.5)) {
+            loadingOpacity = 1
+        }
+        withAnimation(.easeInOut(duration: 20.0).delay(1.8)) {
+            loadProgress = 1.0
+        }
+        // Percent counter
+        animatePct()
+    }
+    
+    private func setupStreams() {
+        NotificationCenter.default.publisher(for: Notification.Name("ConversionDataReceived"))
+            .compactMap { $0.userInfo?["conversionData"] as? [String: Any] }
+            .sink { data in
+                viewModel.ingestAttribution(data)
+            }
+            .store(in: &cancellables)
+        
+        NotificationCenter.default.publisher(for: Notification.Name("deeplink_values"))
+            .compactMap { $0.userInfo?["deeplinksData"] as? [String: Any] }
+            .sink { data in
+                viewModel.ingestDeeplinks(data)
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func animatePct() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+            let total = 288 // ~36 ticks over 2s
+            for i in 0...total {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * (16.0 / Double(total))) {
+                    let eased = Double(i) / Double(total)
+                    displayPct = Int(eased * eased * 100)
+                }
+            }
+        }
+    }
+    
+    private func setupNetworkMonitoring() {
+        networkMonitor.pathUpdateHandler = { path in
+            Task { @MainActor in
+                viewModel.networkConnectivityChanged(path.status == .satisfied)
+            }
+        }
+        networkMonitor.start(queue: .global(qos: .background))
+    }
+    
+}
+
+struct HexagonShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width, h = rect.height
+        let cx = rect.midX, cy = rect.midY
+        let r = min(w, h) / 2
+        for i in 0..<6 {
+            let angle = CGFloat(i) * .pi / 3 - .pi / 2
+            let pt = CGPoint(x: cx + r * cos(angle), y: cy + r * sin(angle))
+            i == 0 ? path.move(to: pt) : path.addLine(to: pt)
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+struct StatCell: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.custom("BebasNeue-Regular", size: 26))
+                .foregroundColor(Color(hex: "#F5A623"))
+            Text(label)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundColor(Color(hex: "#555555"))
+                .kerning(2)
+        }
+        .frame(minWidth: 80)
+        .padding(.vertical, 12)
+        .background(Color(hex: "#F5A623").opacity(0.06))
+        .overlay(
+            RoundedRectangle(cornerRadius: 0)
+                .stroke(Color(hex: "#F5A623").opacity(0.15), lineWidth: 1)
+        )
+    }
+}
+
+struct SteelTextureView: View {
+    var body: some View {
+        Canvas { context, size in
+            // Vertical thin lines — steel plate texture
+            var x: CGFloat = 0
+            while x < size.width {
+                let path = Path { p in
+                    p.move(to: CGPoint(x: x, y: 0))
+                    p.addLine(to: CGPoint(x: x, y: size.height))
+                }
+                context.stroke(path, with: .color(.white.opacity(0.012)), lineWidth: 0.5)
+                x += 4
+            }
+            var y: CGFloat = 0
+            while y < size.height {
+                let path = Path { p in
+                    p.move(to: CGPoint(x: 0, y: y))
+                    p.addLine(to: CGPoint(x: size.width, y: y))
+                }
+                context.stroke(path, with: .color(.white.opacity(0.008)), lineWidth: 0.5)
+                y += 4
+            }
         }
     }
 }
+
+struct HazardBarView: View {
+    let horizontal: Bool
+
+    var body: some View {
+        Canvas { context, size in
+            let stripeWidth: CGFloat = 28
+            var offset: CGFloat = -stripeWidth
+            while offset < size.width + size.height {
+                let path = Path { p in
+                    p.move(to: CGPoint(x: offset, y: 0))
+                    p.addLine(to: CGPoint(x: offset + stripeWidth / 2, y: 0))
+                    p.addLine(to: CGPoint(x: offset + stripeWidth / 2 - size.height, y: size.height))
+                    p.addLine(to: CGPoint(x: offset - size.height, y: size.height))
+                    p.closeSubpath()
+                }
+                context.fill(path, with: .color(Color(hex: "#F5A623").opacity(0.7)))
+                offset += stripeWidth
+            }
+            if !horizontal {
+                // Fade overlay
+                let grad = Gradient(colors: [Color(hex: "#0A0A0A"), .clear])
+                let gradRect = CGRect(origin: .zero, size: size)
+                context.fill(Path(gradRect), with: .linearGradient(
+                    grad,
+                    startPoint: CGPoint(x: 0, y: 0),
+                    endPoint: CGPoint(x: 0, y: size.height)
+                ))
+            }
+        }
+    }
+}
+
+struct CornersView: View {
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                let margin: CGFloat = 16
+                let size: CGFloat = 24
+                let color = Color(hex: "#F5A623")
+                let lw: CGFloat = 2
+
+                // TL
+                Path { p in
+                    p.move(to: CGPoint(x: margin, y: margin + size))
+                    p.addLine(to: CGPoint(x: margin, y: margin))
+                    p.addLine(to: CGPoint(x: margin + size, y: margin))
+                }.stroke(color, lineWidth: lw)
+
+                // TR
+                Path { p in
+                    p.move(to: CGPoint(x: geo.size.width - margin - size, y: margin))
+                    p.addLine(to: CGPoint(x: geo.size.width - margin, y: margin))
+                    p.addLine(to: CGPoint(x: geo.size.width - margin, y: margin + size))
+                }.stroke(color, lineWidth: lw)
+
+                // BL
+                Path { p in
+                    p.move(to: CGPoint(x: margin, y: geo.size.height - 70 - size))
+                    p.addLine(to: CGPoint(x: margin, y: geo.size.height - 70))
+                    p.addLine(to: CGPoint(x: margin + size, y: geo.size.height - 70))
+                }.stroke(color, lineWidth: lw)
+
+                // BR
+                Path { p in
+                    p.move(to: CGPoint(x: geo.size.width - margin - size, y: geo.size.height - 70))
+                    p.addLine(to: CGPoint(x: geo.size.width - margin, y: geo.size.height - 70))
+                    p.addLine(to: CGPoint(x: geo.size.width - margin, y: geo.size.height - 70 - size))
+                }.stroke(color, lineWidth: lw)
+            }
+        }
+    }
+}
+
 
 struct CrackIconView: View {
     var body: some View {

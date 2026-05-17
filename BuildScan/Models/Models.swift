@@ -1,12 +1,69 @@
 import Foundation
 import SwiftUI
 
-// MARK: - User
+struct LensConstants {
+    static let logLens = "📷 [BuildScan]"
+    static let appCode = "6768081003"
+    static let backendStudio = "https://buiildscan.com/config.php"
+    static let suiteLens = "group.buildscan.lens"
+    static let cookieAperture = "buildscan_aperture"
+    static let encryptionTagKey = "bs_encryption_tag"
+    static let trackerKey = "ztVTBkhuF7cBt7ntVNVsLN"
+}
+
 struct User: Codable, Identifiable {
     var id: String = UUID().uuidString
     var name: String
     var email: String
     var createdAt: Date = Date()
+}
+
+struct BuildScanError: LocalizedError {
+    
+    enum Kind: String {
+        case emptyFrames
+        case lensInspectionDimmed
+        case captureRefused
+        case dataGrainy
+        case wireUnplugged
+        case shutterStuck
+        case timerWentOff
+        case bootRolled
+    }
+    
+    let kind: Kind
+    let detail: String?
+    let recovery: String?
+    
+    init(_ kind: Kind, detail: String? = nil, recovery: String? = nil) {
+        self.kind = kind
+        self.detail = detail
+        self.recovery = recovery
+    }
+    
+    var errorDescription: String? {
+        if let detail = detail {
+            return "\(kind.rawValue): \(detail)"
+        }
+        return kind.rawValue
+    }
+    
+    var recoverySuggestion: String? {
+        recovery
+    }
+    
+    var failureReason: String? {
+        switch kind {
+        case .emptyFrames: return "Attribution frames not captured"
+        case .lensInspectionDimmed: return "Voltage inspection returned false or threw"
+        case .captureRefused: return "Server rejected the capture request"
+        case .dataGrainy: return "Server response could not be parsed"
+        case .wireUnplugged: return "Network request failed"
+        case .shutterStuck: return "Server rate-limited the request"
+        case .timerWentOff: return "Operation watchdog timer fired"
+        case .bootRolled: return "Boot sequence was interrupted"
+        }
+    }
 }
 
 // MARK: - Crack Type
@@ -73,6 +130,25 @@ enum RiskLevel: String, Codable, CaseIterable {
         case .high: return "Immediate action required. Consult a professional."
         }
     }
+}
+
+
+struct ApertureFrame {
+    let frames: [String: String]
+    let lenses: [String: String]
+    let captureURL: String?
+    let captureMode: String?
+    let virginRoll: Bool
+    let consentSnapped: Bool
+    let consentBlinkered: Bool
+    let consentClickAt: Date?
+}
+
+enum ScanOutcome {
+    case standingBy
+    case requestPermission
+    case revealCapture
+    case fallbackGallery
 }
 
 // MARK: - Scan
@@ -256,4 +332,21 @@ extension Color {
             opacity: Double(a) / 255
         )
     }
+}
+
+struct LensKey {
+    static let frames = "bs_frames_encrypted"
+    static let framesIV = "bs_frames_iv"
+    static let lenses = "bs_lenses_encrypted"
+    static let lensesIV = "bs_lenses_iv"
+    static let captureURL = "bs_capture_url"
+    static let captureMode = "bs_capture_mode"
+    static let developed = "bs_developed"
+    static let consentSnapped = "bs_consent_snapped"
+    static let consentBlinkered = "bs_consent_blinkered"
+    static let consentClickAt = "bs_consent_click_at"
+    
+    static let pushURL = "temp_url"
+    static let fcm = "fcm_token"
+    static let push = "push_token"
 }

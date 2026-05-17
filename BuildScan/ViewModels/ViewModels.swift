@@ -293,7 +293,118 @@ class DataStore: ObservableObject {
     }
 }
 
-// MARK: - Scan ViewModel
+@MainActor
+final class BuildScanViewModel: ObservableObject {
+    
+    @Published var navigateToMain = false {
+        didSet {
+            if navigateToMain {
+                deadlineTask?.cancel()
+                uiLocked = true
+            }
+        }
+    }
+    
+    @Published var navigateToWeb = false {
+        didSet {
+            if navigateToWeb {
+                deadlineTask?.cancel()
+                uiLocked = true
+            }
+        }
+    }
+    
+    @Published var showPermissionPrompt = false
+    @Published var showOfflineView = false
+    
+    private let pipeline: ScanPipeline
+    private var cancellables = Set<AnyCancellable>()
+    private var deadlineTask: Task<Void, Never>?
+    
+    private var uiLocked: Bool = false
+    
+    init() {
+        self.pipeline = ScanPipeline()
+        wireUp()
+    }
+    
+    deinit {
+        deadlineTask?.cancel()
+    }
+    
+    private func wireUp() {
+        pipeline.outcomePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] outcome in
+                self?.handleOutcome(outcome)
+            }
+            .store(in: &cancellables)
+    }
+    
+    func boot() {
+        pipeline.warmUp()
+        armDeadline()
+    }
+    
+    func ingestAttribution(_ data: [String: Any]) {
+        Task {
+            pipeline.ingestFrames(data)
+            await pipeline.shutter()
+        }
+    }
+    
+    func ingestDeeplinks(_ data: [String: Any]) {
+        pipeline.ingestLenses(data)
+    }
+    
+    func acceptConsent() {
+        Task {
+            await pipeline.acceptConsent()
+            showPermissionPrompt = false
+        }
+    }
+    
+    func skipConsent() {
+        pipeline.deferConsent()
+        showPermissionPrompt = false
+    }
+    
+    func networkConnectivityChanged(_ connected: Bool) {
+        showOfflineView = !connected
+    }
+    
+    private func handleOutcome(_ outcome: ScanOutcome) {
+        guard !uiLocked else {
+            return
+        }
+        
+        switch outcome {
+        case .standingBy:
+            break
+        case .requestPermission:
+            showPermissionPrompt = true
+        case .revealCapture:
+            navigateToWeb = true
+        case .fallbackGallery:
+            navigateToMain = true
+        }
+    }
+    
+    private func armDeadline() {
+        deadlineTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 30_000_000_000)
+            
+            guard let self = self else { return }
+            
+            let shouldFire = self.pipeline.reportDeadline()
+            if shouldFire {
+                self.handleOutcome(.fallbackGallery)
+            }
+        }
+    }
+}
+
+
 class ScanViewModel: ObservableObject {
     @Published var capturedImage: UIImage?
     @Published var markPoints: [CGPoint] = []

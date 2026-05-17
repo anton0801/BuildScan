@@ -132,6 +132,28 @@ struct LoginView: View {
     }
 }
 
+struct OfflineView: View {
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                Image("scanningsinfo")
+                    .resizable().scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .ignoresSafeArea()
+                    .blur(radius: 11)
+                    .opacity(0.3)
+                
+                Image("scanningsinfoalert")
+                    .resizable()
+                    .frame(width: 280, height: 240)
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
 // Workaround: use environment appState
 struct LoginViewWrapper: View {
     @EnvironmentObject var appState: AppState

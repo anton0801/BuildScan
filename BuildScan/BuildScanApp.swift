@@ -2,35 +2,22 @@ import SwiftUI
 
 @main
 struct BuildScanApp: App {
-    @StateObject private var appState = AppState()
-    @StateObject private var dataStore = DataStore()
-    @State private var showSplash = true
+    
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
     var body: some Scene {
         WindowGroup {
             ZStack {
-                if showSplash {
-                    SplashView {
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            showSplash = false
-                        }
-                    }
-                } else {
-                    RootView()
-                        .environmentObject(appState)
-                        .environmentObject(dataStore)
-                        .preferredColorScheme(appState.colorScheme)
-                }
+                SplashView()
             }
-            .animation(.easeInOut(duration: 0.4), value: showSplash)
         }
     }
 }
 
 // MARK: - Root View
 struct RootView: View {
-    @EnvironmentObject var appState: AppState
-    @EnvironmentObject var dataStore: DataStore
+    @StateObject private var appState = AppState()
+    @StateObject private var dataStore = DataStore()
 
     var body: some View {
         Group {
