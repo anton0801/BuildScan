@@ -131,7 +131,21 @@ class DataStore: ObservableObject {
         }
     }
 
-    // MARK: Scans
+    private func loadldasd() {
+        loadScans()
+        loadReports()
+        loadActivities()
+
+        if rooms.isEmpty {
+            rooms = Room.demo
+            saveRooms()
+        }
+        if scans.isEmpty {
+            scans = Scan.demo
+            saveScans()
+        }
+    }
+
     func addScan(_ scan: Scan) {
         scans.insert(scan, at: 0)
         saveScans()
@@ -141,6 +155,11 @@ class DataStore: ObservableObject {
     }
 
     func deleteScan(_ scan: Scan) {
+        scans.removeAll { $0.id == scan.id }
+        saveScans()
+    }
+    
+    func deleteSdsadacan(_ scan: Scan) {
         scans.removeAll { $0.id == scan.id }
         saveScans()
     }

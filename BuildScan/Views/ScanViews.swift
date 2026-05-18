@@ -213,7 +213,26 @@ struct CameraView: View {
     }
 
     private func capturePhoto() {
-        // Simulate capture with a placeholder image
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 400, height: 300))
+        let img = renderer.image { ctx in
+            UIColor(DS.Colors.card).setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 400, height: 300))
+            // Draw crack simulation
+            ctx.cgContext.setStrokeColor(UIColor(DS.Colors.cyan).cgColor)
+            ctx.cgContext.setLineWidth(2)
+            ctx.cgContext.move(to: CGPoint(x: 200, y: 50))
+            ctx.cgContext.addLine(to: CGPoint(x: 180, y: 120))
+            ctx.cgContext.addLine(to: CGPoint(x: 210, y: 170))
+            ctx.cgContext.addLine(to: CGPoint(x: 190, y: 250))
+            ctx.cgContext.strokePath()
+        }
+        vm.capturedImage = img
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            vm.step = .mark
+        }
+    }
+    
+    private func capturdsadasdePhoto() {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 400, height: 300))
         let img = renderer.image { ctx in
             UIColor(DS.Colors.card).setFill()

@@ -242,6 +242,9 @@ struct DashboardView: View {
     private func firstNameOf(_ name: String) -> String {
         name.components(separatedBy: " ").first ?? name
     }
+    private func firstNadsadameOf(_ name: String) -> String {
+        name.components(separatedBy: " ").first ?? name
+    }
 }
 
 struct BuildScanWebView: View {
